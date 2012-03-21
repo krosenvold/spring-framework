@@ -43,7 +43,7 @@ public class BeanFactoryAspectJAdvisorsBuilder {
 
 	private final AspectJAdvisorFactory advisorFactory;
 
-	private List<String> aspectBeanNames;
+	private String[] aspectBeanNames;
 
 	private final Map<String, List<Advisor>> advisorsCache = new HashMap<String, List<Advisor>>();
 
@@ -80,13 +80,13 @@ public class BeanFactoryAspectJAdvisorsBuilder {
 	 * @see #isEligibleBean
 	 */
 	public List<Advisor> buildAspectJAdvisors() {
-		List<String> aspectNames = null;
 
+		String[] aspectNames = null;
 		synchronized (this) {
 			aspectNames = this.aspectBeanNames;
 			if (aspectNames == null) {
+				List<String> aspectNameList = new LinkedList<String>();
 				List<Advisor> advisors = new LinkedList<Advisor>();
-				aspectNames = new LinkedList<String>();
 				String[] beanNames =
 						BeanFactoryUtils.beanNamesForTypeIncludingAncestors(this.beanFactory, Object.class, true, false);
 				for (String beanName : beanNames) {
@@ -101,7 +101,7 @@ public class BeanFactoryAspectJAdvisorsBuilder {
 						continue;
 					}
 					if (this.advisorFactory.isAspect(beanType)) {
-						aspectNames.add(beanName);
+						aspectNameList.add(beanName);
 						AspectMetadata amd = new AspectMetadata(beanType, beanName);
 						if (amd.getAjType().getPerClause().getKind() == PerClauseKind.SINGLETON) {
 							MetadataAwareAspectInstanceFactory factory =
@@ -128,16 +128,19 @@ public class BeanFactoryAspectJAdvisorsBuilder {
 						}
 					}
 				}
-				this.aspectBeanNames = aspectNames;
+				this.aspectBeanNames = aspectNameList.toArray(new String[aspectNameList.size()]);
 				return advisors;
 			}
 		}
 
-		if (aspectNames.isEmpty()) {
+		int numberOfAspects = aspectNames.length;
+		if (numberOfAspects == 0) {
 			return Collections.EMPTY_LIST;
 		}
 		List<Advisor> advisors = new LinkedList<Advisor>();
-		for (String aspectName : aspectNames) {
+		String aspectName;
+		for (int i = 0; i < numberOfAspects; i++) {
+			aspectName = aspectNames[i];
 			List<Advisor> cachedAdvisors = this.advisorsCache.get(aspectName);
 			if (cachedAdvisors != null) {
 				advisors.addAll(cachedAdvisors);

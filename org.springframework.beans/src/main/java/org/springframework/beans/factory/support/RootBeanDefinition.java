@@ -80,6 +80,8 @@ public class RootBeanDefinition extends AbstractBeanDefinition {
 
 	final Object postProcessingLock = new Object();
 
+	volatile Class predictedType;
+
 
 	/**
 	 * Create a new RootBeanDefinition, to be configured through its bean
@@ -315,6 +317,14 @@ public class RootBeanDefinition extends AbstractBeanDefinition {
 	@Override
 	public boolean equals(Object other) {
 		return (this == other || (other instanceof RootBeanDefinition && super.equals(other)));
+	}
+
+	public Class getPredictedType() {
+		return predictedType;
+	}
+
+	public void setPredictedType(Class predictedType) {
+		this.predictedType = predictedType;
 	}
 
 	@Override

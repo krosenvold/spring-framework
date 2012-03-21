@@ -772,6 +772,9 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 	public List<BeanPostProcessor> getBeanPostProcessors() {
 		return this.beanPostProcessors;
 	}
+	protected BeanPostProcessor[] getBeanPostProcessorArray() {
+		return this.beanPostProcessors.toArray( new BeanPostProcessor[beanPostProcessors.size()]);
+	}
 
 	/**
 	 * Return whether this factory holds a InstantiationAwareBeanPostProcessor

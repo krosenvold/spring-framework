@@ -133,6 +133,10 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 	/** Map of bean definition objects, keyed by bean name */
 	private final Map<String, BeanDefinition> beanDefinitionMap = new ConcurrentHashMap<String, BeanDefinition>();
 
+	/* Maps by type to bean names */
+	private final Map<Class, String[]> byTypeMappingSingletonsEager = new ConcurrentHashMap<Class, String[]>();
+	private final Map<Class, String[]> byTypeMappingNonSingletonsEager = new ConcurrentHashMap<Class, String[]>();
+
 	/** List of bean definition names, in registration order */
 	private final List<String> beanDefinitionNames = new ArrayList<String>();
 
@@ -294,11 +298,30 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 		}
 	}
 
+ 	private void clearTypeBasedCaches(){
+		byTypeMappingSingletonsEager.clear();
+		byTypeMappingNonSingletonsEager.clear();
+	}
+
 	public String[] getBeanNamesForType(Class type) {
 		return getBeanNamesForType(type, true, true);
 	}
 
 	public String[] getBeanNamesForType(Class type, boolean includeNonSingletons, boolean allowEagerInit) {
+		if (type == null || !allowEagerInit) {
+			return getBeanNamesForTypeImpl(type, includeNonSingletons, allowEagerInit);
+		}
+		Map<Class, String[]> cache = includeNonSingletons ? byTypeMappingNonSingletonsEager : byTypeMappingSingletonsEager;
+		String[] resolvedBeanNames = cache.get(type);
+		if (resolvedBeanNames != null) {
+			return resolvedBeanNames;
+		}
+		resolvedBeanNames = getBeanNamesForTypeImpl(type, includeNonSingletons, allowEagerInit);
+		cache.put( type, resolvedBeanNames);
+		return resolvedBeanNames;
+	}
+
+	private String[] getBeanNamesForTypeImpl(Class type, boolean includeNonSingletons, boolean allowEagerInit) {
 		List<String> result = new ArrayList<String>();
 
 		// Check all bean definitions.
@@ -669,6 +692,8 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 			destroySingleton(beanName);
 		}
 
+		clearTypeBasedCaches();
+
 		// Reset all bean definitions that have the given bean as parent (recursively).
 		for (String bdName : this.beanDefinitionNames) {
 			if (!beanName.equals(bdName)) {
@@ -843,7 +868,10 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 				}
 			}
 		}
-		for (String candidateName : candidateNames) {
+		int size = candidateNames.length;
+		String candidateName;
+		for (int i = 0; i < size; i++){
+			candidateName = candidateNames[i];
 			if (!candidateName.equals(beanName) && isAutowireCandidate(candidateName, descriptor)) {
 				result.put(candidateName, getBean(candidateName));
 			}

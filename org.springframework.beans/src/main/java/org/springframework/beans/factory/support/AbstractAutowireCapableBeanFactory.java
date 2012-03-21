@@ -387,10 +387,16 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 
 	public Object applyBeanPostProcessorsBeforeInitialization(Object existingBean, String beanName)
 			throws BeansException {
+		return applyBeanPostProcessorsBeforeInitialization( existingBean, beanName, getBeanPostProcessorArray());
+	}
+
+	private Object applyBeanPostProcessorsBeforeInitialization(Object existingBean, String beanName, BeanPostProcessor[] processors)
+			throws BeansException {
 
 		Object result = existingBean;
-		for (BeanPostProcessor beanProcessor : getBeanPostProcessors()) {
-			result = beanProcessor.postProcessBeforeInitialization(result, beanName);
+		int size = processors.length;
+		for (int i = 0; i < size; i++){
+			result = processors[i].postProcessBeforeInitialization(result, beanName);
 			if (result == null) {
 				return result;
 			}
@@ -400,10 +406,16 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 
 	public Object applyBeanPostProcessorsAfterInitialization(Object existingBean, String beanName)
 			throws BeansException {
+		return applyBeanPostProcessorsAfterInitialization( existingBean, beanName, getBeanPostProcessorArray());
+	}
+
+	private Object applyBeanPostProcessorsAfterInitialization(Object existingBean, String beanName, BeanPostProcessor[] processors)
+			throws BeansException {
 
 		Object result = existingBean;
-		for (BeanPostProcessor beanProcessor : getBeanPostProcessors()) {
-			result = beanProcessor.postProcessAfterInitialization(result, beanName);
+		int size = processors.length;
+		for (int i = 0; i < size; i++){
+			result = processors[i].postProcessAfterInitialization(result, beanName);
 			if (result == null) {
 				return result;
 			}
@@ -442,7 +454,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 
 		try {
 			// Give BeanPostProcessors a chance to return a proxy instead of the target bean instance.
-			Object bean = resolveBeforeInstantiation(beanName, mbd);
+			Object bean = resolveBeforeInstantiation(beanName, mbd, getBeanPostProcessorArray());
 			if (bean != null) {
 				return bean;
 			}
@@ -567,6 +579,10 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 
 	@Override
 	protected Class predictBeanType(String beanName, RootBeanDefinition mbd, Class... typesToMatch) {
+		if (mbd.getPredictedType() != null){
+			return mbd.getPredictedType();
+		}
+
 		Class beanClass;
 		if (mbd.getFactoryMethodName() != null) {
 			beanClass = getTypeForFactoryMethod(beanName, mbd, typesToMatch);
@@ -577,16 +593,21 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 		// Apply SmartInstantiationAwareBeanPostProcessors to predict the
 		// eventual type after a before-instantiation shortcut.
 		if (beanClass != null && !mbd.isSynthetic() && hasInstantiationAwareBeanPostProcessors()) {
-			for (BeanPostProcessor bp : getBeanPostProcessors()) {
+			final List<BeanPostProcessor> processors = getBeanPostProcessors();
+			int size = processors.size();
+			for (int i = 0; i < size; i++) {
+				BeanPostProcessor bp = processors.get( i);
 				if (bp instanceof SmartInstantiationAwareBeanPostProcessor) {
 					SmartInstantiationAwareBeanPostProcessor ibp = (SmartInstantiationAwareBeanPostProcessor) bp;
 					Class processedType = ibp.predictBeanType(beanClass, beanName);
 					if (processedType != null) {
+						mbd.setPredictedType( processedType);
 						return processedType;
 					}
 				}
 			}
 		}
+		mbd.setPredictedType( beanClass);
 		return beanClass;
 	}
 
@@ -790,8 +811,17 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 	protected void applyMergedBeanDefinitionPostProcessors(RootBeanDefinition mbd, Class beanType, String beanName)
 			throws BeansException {
 
+		applyMergedBeanDefinitionPostProcessors( mbd, beanType, beanName, getBeanPostProcessorArray());
+	}
+
+	protected void applyMergedBeanDefinitionPostProcessors(RootBeanDefinition mbd, Class beanType, String beanName, BeanPostProcessor[] postProcessors)
+			throws BeansException {
+
+		int size = postProcessors.length;
 		try {
-			for (BeanPostProcessor bp : getBeanPostProcessors()) {
+			BeanPostProcessor bp;
+			for (int i = 0; i < size; i++){
+				bp = postProcessors[i];
 				if (bp instanceof MergedBeanDefinitionPostProcessor) {
 					MergedBeanDefinitionPostProcessor bdp = (MergedBeanDefinitionPostProcessor) bp;
 					bdp.postProcessMergedBeanDefinition(mbd, beanType, beanName);
@@ -812,19 +842,24 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 	 * @return the shortcut-determined bean instance, or <code>null</code> if none
 	 */
 	protected Object resolveBeforeInstantiation(String beanName, RootBeanDefinition mbd) {
+		return resolveBeforeInstantiation( beanName, mbd, getBeanPostProcessorArray());
+	}
+
+	protected Object resolveBeforeInstantiation(String beanName, RootBeanDefinition mbd, BeanPostProcessor[] postProcessors ) {
 		Object bean = null;
 		if (!Boolean.FALSE.equals(mbd.beforeInstantiationResolved)) {
 			// Make sure bean class is actually resolved at this point.
 			if (mbd.hasBeanClass() && !mbd.isSynthetic() && hasInstantiationAwareBeanPostProcessors()) {
-				bean = applyBeanPostProcessorsBeforeInstantiation(mbd.getBeanClass(), beanName);
+				bean = applyBeanPostProcessorsBeforeInstantiation(mbd.getBeanClass(), beanName, postProcessors);
 				if (bean != null) {
-					bean = applyBeanPostProcessorsAfterInitialization(bean, beanName);
+					bean = applyBeanPostProcessorsAfterInitialization(bean, beanName, postProcessors);
 				}
 			}
 			mbd.beforeInstantiationResolved = (bean != null);
 		}
 		return bean;
 	}
+
 
 	/**
 	 * Apply InstantiationAwareBeanPostProcessors to the specified bean definition
@@ -841,7 +876,15 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 	protected Object applyBeanPostProcessorsBeforeInstantiation(Class beanClass, String beanName)
 			throws BeansException {
 
-		for (BeanPostProcessor bp : getBeanPostProcessors()) {
+		return applyBeanPostProcessorsBeforeInstantiation( beanClass, beanName, getBeanPostProcessorArray());
+	}
+	protected Object applyBeanPostProcessorsBeforeInstantiation(Class beanClass, String beanName, BeanPostProcessor[] postProcessors)
+			throws BeansException {
+
+		int size = postProcessors.length;
+		BeanPostProcessor bp;
+		for (int i = 0; i < size; i++){
+			bp = postProcessors[i];
 			if (bp instanceof InstantiationAwareBeanPostProcessor) {
 				InstantiationAwareBeanPostProcessor ibp = (InstantiationAwareBeanPostProcessor) bp;
 				Object result = ibp.postProcessBeforeInstantiation(beanClass, beanName);
@@ -852,6 +895,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 		}
 		return null;
 	}
+
 
 	/**
 	 * Create a new instance for the specified bean, using an appropriate instantiation strategy:
@@ -1028,8 +1072,13 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 		// to support styles of field injection.
 		boolean continueWithPropertyPopulation = true;
 
+		final List<BeanPostProcessor> processors1 = getBeanPostProcessors();
+		final BeanPostProcessor[] processors = (BeanPostProcessor[]) processors1.toArray(new BeanPostProcessor[processors1.size()]);
+		int numProcessors = processors.length;
 		if (!mbd.isSynthetic() && hasInstantiationAwareBeanPostProcessors()) {
-			for (BeanPostProcessor bp : getBeanPostProcessors()) {
+			BeanPostProcessor bp;
+			for (int i = 0; i < numProcessors; i++){
+				bp = processors[i];
 				if (bp instanceof InstantiationAwareBeanPostProcessor) {
 					InstantiationAwareBeanPostProcessor ibp = (InstantiationAwareBeanPostProcessor) bp;
 					if (!ibp.postProcessAfterInstantiation(bw.getWrappedInstance(), beanName)) {
@@ -1067,7 +1116,9 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 		if (hasInstAwareBpps || needsDepCheck) {
 			PropertyDescriptor[] filteredPds = filterPropertyDescriptorsForDependencyCheck(bw);
 			if (hasInstAwareBpps) {
-				for (BeanPostProcessor bp : getBeanPostProcessors()) {
+				BeanPostProcessor bp;
+				for (int i = 0; i < numProcessors; i++){
+					bp = processors[i];
 					if (bp instanceof InstantiationAwareBeanPostProcessor) {
 						InstantiationAwareBeanPostProcessor ibp = (InstantiationAwareBeanPostProcessor) bp;
 						pvs = ibp.postProcessPropertyValues(pvs, filteredPds, bw.getWrappedInstance(), beanName);
@@ -1409,10 +1460,12 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 		else {
 			invokeAwareMethods(beanName, bean);
 		}
-		
+
+		final BeanPostProcessor[] postProcessors = getBeanPostProcessorArray();
+
 		Object wrappedBean = bean;
 		if (mbd == null || !mbd.isSynthetic()) {
-			wrappedBean = applyBeanPostProcessorsBeforeInitialization(wrappedBean, beanName);
+			wrappedBean = applyBeanPostProcessorsBeforeInitialization(wrappedBean, beanName, postProcessors);
 		}
 
 		try {
@@ -1425,7 +1478,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 		}
 
 		if (mbd == null || !mbd.isSynthetic()) {
-			wrappedBean = applyBeanPostProcessorsAfterInitialization(wrappedBean, beanName);
+			wrappedBean = applyBeanPostProcessorsAfterInitialization(wrappedBean, beanName, postProcessors);
 		}
 		return wrappedBean;
 	}

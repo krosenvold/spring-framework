@@ -75,12 +75,16 @@ public class BeanFactoryAdvisorRetrievalHelper {
 				this.cachedAdvisorBeanNames = advisorNames;
 			}
 		}
-		if (advisorNames.length == 0) {
+		final int numberOfAdvisors = advisorNames.length;
+		if (numberOfAdvisors == 0) {
 			return new LinkedList<Advisor>();
 		}
 
 		List<Advisor> advisors = new LinkedList<Advisor>();
-		for (String name : advisorNames) {
+
+		String name;
+		for (int i = 0; i < numberOfAdvisors; i++) {
+			name = advisorNames[i];
 			if (isEligibleBean(name) && !this.beanFactory.isCurrentlyInCreation(name)) {
 				try {
 					advisors.add(this.beanFactory.getBean(name, Advisor.class));
