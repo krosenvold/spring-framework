@@ -22,9 +22,11 @@ import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.factory.support.BeanDefinitionReader;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.AnnotationConfigUtils;
 import org.springframework.context.support.GenericApplicationContext;
 import org.springframework.util.StringUtils;
+import org.springframework.test.context.ContextCacheKey;
 
 /**
  * Abstract, generic extension of {@link AbstractContextLoader} which loads a
@@ -56,7 +58,7 @@ public abstract class AbstractGenericContextLoader extends AbstractContextLoader
 	 * <li>Delegates to {@link AnnotationConfigUtils} for
 	 * {@link AnnotationConfigUtils#registerAnnotationConfigProcessors(org.springframework.beans.factory.support.BeanDefinitionRegistry) registering}
 	 * annotation configuration processors.</li>
-	 * <li>Calls {@link #customizeContext(GenericApplicationContext)} to allow
+	 * <li>Calls {@link #customizeContext(org.springframework.context.support.GenericApplicationContext, org.springframework.test.context.ContextCacheKey)}  to allow
 	 * for customizing the context before it is refreshed.</li>
 	 * <li>{@link ConfigurableApplicationContext#refresh() Refreshes} the
 	 * context and registers a JVM shutdown hook for it.</li>
@@ -80,10 +82,27 @@ public abstract class AbstractGenericContextLoader extends AbstractContextLoader
 		customizeBeanFactory(context.getDefaultListableBeanFactory());
 		createBeanDefinitionReader(context).loadBeanDefinitions(locations);
 		AnnotationConfigUtils.registerAnnotationConfigProcessors(context);
-		customizeContext(context);
+		customizeContext(context, new ContextCacheKey( locations));
 		context.refresh();
 		context.registerShutdownHook();
 		return context;
+	}
+
+	/**
+	 * Activates this context for the current thread.
+	 *
+	 * This method is called every time an applicationContext is assigned to a thread,
+	 * including the first time the context is created. The thread may have previously been assigned
+	 *  a different applicationContext.
+	 *
+	 * This method only needs to be implemented if you use web scopes AND run multi-threaded tests.
+	 *
+	 * @param applicationContext The context that is to be activated
+	 * @param contextCacheKey The cache key that the context loader can use to cache additional data
+	 * @since 3.0
+	 */
+
+	public void activateForThread(ApplicationContext applicationContext, ContextCacheKey contextCacheKey) {
 	}
 
 	/**
@@ -96,6 +115,7 @@ public abstract class AbstractGenericContextLoader extends AbstractContextLoader
 	 * @see org.springframework.context.support.GenericApplicationContext#setResourceLoader
 	 * @see org.springframework.context.support.GenericApplicationContext#setId
 	 */
+	@SuppressWarnings({"UnusedDeclaration"})
 	protected void prepareContext(GenericApplicationContext context) {
 	}
 
@@ -111,6 +131,7 @@ public abstract class AbstractGenericContextLoader extends AbstractContextLoader
 	 * @see org.springframework.beans.factory.support.DefaultListableBeanFactory#setAllowCircularReferences(boolean)
 	 * @see org.springframework.beans.factory.support.DefaultListableBeanFactory#setAllowRawInjectionDespiteWrapping(boolean)
 	 */
+	@SuppressWarnings({"UnusedDeclaration"})
 	protected void customizeBeanFactory(DefaultListableBeanFactory beanFactory) {
 	}
 
@@ -132,9 +153,11 @@ public abstract class AbstractGenericContextLoader extends AbstractContextLoader
 	 * <p>The default implementation is empty but can be overridden in subclasses
 	 * to customize the application context.
 	 * @param context the newly created application context
+	 * @param contextCacheKey The cache key to be used for caching within this loader
 	 * @see #loadContext(String...)
 	 */
-	protected void customizeContext(GenericApplicationContext context) {
+	@SuppressWarnings({"UnusedDeclaration"})
+	protected void customizeContext(GenericApplicationContext context, ContextCacheKey contextCacheKey) {
 	}
 
 }

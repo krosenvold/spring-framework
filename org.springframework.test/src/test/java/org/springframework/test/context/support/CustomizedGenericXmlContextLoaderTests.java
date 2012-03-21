@@ -22,6 +22,7 @@ import static org.junit.Assert.assertFalse;
 import org.junit.Test;
 
 import org.springframework.context.support.GenericApplicationContext;
+import org.springframework.test.context.ContextCacheKey;
 
 /**
  * Unit test which verifies that extensions of
@@ -46,7 +47,7 @@ public class CustomizedGenericXmlContextLoaderTests {
 		new GenericXmlContextLoader() {
 
 			@Override
-			protected void customizeContext(GenericApplicationContext context) {
+			protected void customizeContext(GenericApplicationContext context, ContextCacheKey contextCacheKey) {
 				assertFalse("The context should not yet have been refreshed.", context.isActive());
 				builder.append(expectedContents);
 			}

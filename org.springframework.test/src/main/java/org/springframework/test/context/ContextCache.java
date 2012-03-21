@@ -46,8 +46,8 @@ class ContextCache {
 	/**
 	 * Map of context keys to Spring ApplicationContext instances.
 	 */
-	private final Map<String, ApplicationContext> contextKeyToContextMap =
-			new ConcurrentHashMap<String, ApplicationContext>();
+	private final Map<ContextCacheKey, ApplicationContext> contextKeyToContextMap =
+			new ConcurrentHashMap<ContextCacheKey, ApplicationContext>();
 
 	private int hitCount;
 
@@ -73,8 +73,9 @@ class ContextCache {
 	/**
 	 * Return whether there is a cached context for the given key.
 	 * @param key the context key (never <code>null</code>)
+	 * @return true if the cache contains an entry for the key
 	 */
-	boolean contains(String key) {
+	boolean contains(ContextCacheKey key) {
 		Assert.notNull(key, "Key must not be null");
 		return this.contextKeyToContextMap.containsKey(key);
 	}
@@ -88,7 +89,7 @@ class ContextCache {
 	 * or <code>null</code> if not found in the cache.
 	 * @see #remove
 	 */
-	ApplicationContext get(String key) {
+	ApplicationContext get(ContextCacheKey key) {
 		Assert.notNull(key, "Key must not be null");
 		ApplicationContext context = this.contextKeyToContextMap.get(key);
 		if (context == null) {
@@ -119,6 +120,7 @@ class ContextCache {
 	/**
 	 * Get the overall hit count for this cache. A <em>hit</em> is an access
 	 * to the cache, which returned a non-null context for a queried key.
+	 * @return the number of cache hits
 	 */
 	int getHitCount() {
 		return this.hitCount;
@@ -128,6 +130,7 @@ class ContextCache {
 	 * Get the overall miss count for this cache. A <em>miss</em> is an
 	 * access to the cache, which returned a <code>null</code> context for a
 	 * queried key.
+	 * @return the number of cache misses
 	 */
 	int getMissCount() {
 		return this.missCount;
@@ -138,7 +141,7 @@ class ContextCache {
 	 * @param key the context key (never <code>null</code>)
 	 * @param context the ApplicationContext instance (never <code>null</code>)
 	 */
-	void put(String key, ApplicationContext context) {
+	void put(ContextCacheKey key, ApplicationContext context) {
 		Assert.notNull(key, "Key must not be null");
 		Assert.notNull(context, "ApplicationContext must not be null");
 		this.contextKeyToContextMap.put(key, context);
@@ -151,7 +154,7 @@ class ContextCache {
 	 * or <code>null</code> if not found in the cache.
 	 * @see #setDirty
 	 */
-	ApplicationContext remove(String key) {
+	ApplicationContext remove(ContextCacheKey key) {
 		return this.contextKeyToContextMap.remove(key);
 	}
 
@@ -166,7 +169,7 @@ class ContextCache {
 	 * @param key the context key (never <code>null</code>)
 	 * @see #remove
 	 */
-	void setDirty(String key) {
+	void setDirty(ContextCacheKey key) {
 		Assert.notNull(key, "Key must not be null");
 		ApplicationContext context = remove(key);
 		if (context instanceof ConfigurableApplicationContext) {
@@ -178,6 +181,7 @@ class ContextCache {
 	 * Determine the number of contexts currently stored in the cache. If the
 	 * cache contains more than <tt>Integer.MAX_VALUE</tt> elements, returns
 	 * <tt>Integer.MAX_VALUE</tt>.
+	 * @return the size of the cache
 	 */
 	int size() {
 		return this.contextKeyToContextMap.size();

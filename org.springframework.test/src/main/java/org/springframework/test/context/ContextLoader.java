@@ -80,4 +80,20 @@ public interface ContextLoader {
 	 */
 	ApplicationContext loadContext(String... locations) throws Exception;
 
+	/**
+	 * Activates this context for the current thread.
+	 *
+	 * This method is called every time an applicationContext is assigned to a thread,
+	 * including the first time the context is created. The thread may have previously been assigned
+	 *  a different applicationContext.
+	 *
+     * This method may be needed activate non-spring managed artifacts associated with threads
+     * when using web scopes.
+	 *
+	 * @param applicationContext The context that is to be activated
+	 * @param contextCacheKey The cache key that the context loader can use to cache additional data
+	 * @since 3.1
+	 */
+	void activateForThread(ApplicationContext applicationContext, ContextCacheKey contextCacheKey);
+
 }

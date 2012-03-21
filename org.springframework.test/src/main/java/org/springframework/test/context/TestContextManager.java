@@ -89,14 +89,23 @@ public class TestContextManager {
 	 */
 	static final ContextCache contextCache = new ContextCache();
 
-	private final TestContext testContext;
-
+	private final TestClassContext testClassContext;
+    
+	private final ThreadLocal<TestContext> testContext = new ThreadLocal<TestContext>(){
+        @Override
+        protected TestContext initialValue()
+        {
+            return new TestContext(testClassContext, null, null);
+        }
+    };
+    
 	private final List<TestExecutionListener> testExecutionListeners = new ArrayList<TestExecutionListener>();
 
 
 	/**
 	 * Delegates to {@link #TestContextManager(Class, String)} with a value of
 	 * <code>null</code> for the default <code>ContextLoader</code> class name.
+     * @param testClass the test class to be managed
 	 */
 	public TestContextManager(Class<?> testClass) {
 		this(testClass, null);
@@ -114,16 +123,20 @@ public class TestContextManager {
 	 * @see #retrieveTestExecutionListeners(Class)
 	 */
 	public TestContextManager(Class<?> testClass, String defaultContextLoaderClassName) {
-		this.testContext = new TestContext(testClass, contextCache, defaultContextLoaderClassName);
+		testClassContext = new TestClassContext(testClass, contextCache, defaultContextLoaderClassName);
 		registerTestExecutionListeners(retrieveTestExecutionListeners(testClass));
 	}
 
 	/**
 	 * Returns the {@link TestContext} managed by this
 	 * <code>TestContextManager</code>.
+     * @return the test context
 	 */
 	protected final TestContext getTestContext() {
-		return this.testContext;
+		if (testContext.get() == null){
+			throw new IllegalStateException("At this stage we expect the testcontext to be set up in TrheadLocal");
+		}
+		return this.testContext.get();
 	}
 
 
@@ -153,7 +166,8 @@ public class TestContextManager {
 	/**
 	 * Get a copy of the {@link TestExecutionListener TestExecutionListeners}
 	 * registered for this <code>TestContextManager</code> in reverse order.
-	 */
+     * @return test execution listeners in reverse order
+     */
 	private List<TestExecutionListener> getReversedTestExecutionListeners() {
 		List<TestExecutionListener> listenersReversed =
 				new ArrayList<TestExecutionListener>(getTestExecutionListeners());
@@ -242,7 +256,8 @@ public class TestContextManager {
 
 	/**
 	 * Determine the default {@link TestExecutionListener} classes.
-	 */
+     * @return the set of default test execution listeners
+     */
 	@SuppressWarnings("unchecked")
 	protected Set<Class<? extends TestExecutionListener>> getDefaultTestExecutionListenerClasses() {
 		Set<Class<? extends TestExecutionListener>> defaultListenerClasses =
@@ -277,11 +292,11 @@ public class TestContextManager {
 	 * @see #getTestExecutionListeners()
 	 */
 	public void beforeTestClass() throws Exception {
-		final Class<?> testClass = getTestContext().getTestClass();
-		if (logger.isTraceEnabled()) {
-			logger.trace("beforeTestClass(): class [" + testClass + "]");
-		}
-		getTestContext().updateState(null, null, null);
+		testContext.get().updateState(null, null, null);
+        final Class<?> testClass = getTestContext().getTestClass();
+        if (logger.isTraceEnabled()) {
+            logger.trace("beforeTestClass(): class [" + testClass + "]");
+        }
 
 		for (TestExecutionListener testExecutionListener : getTestExecutionListeners()) {
 			try {
@@ -314,7 +329,7 @@ public class TestContextManager {
 		if (logger.isTraceEnabled()) {
 			logger.trace("prepareTestInstance(): instance [" + testInstance + "]");
 		}
-		getTestContext().updateState(testInstance, null, null);
+		testContext.get().updateState(testInstance, null, null);
 
 		for (TestExecutionListener testExecutionListener : getTestExecutionListeners()) {
 			try {
@@ -351,7 +366,7 @@ public class TestContextManager {
 		if (logger.isTraceEnabled()) {
 			logger.trace("beforeTestMethod(): instance [" + testInstance + "], method [" + testMethod + "]");
 		}
-		getTestContext().updateState(testInstance, testMethod, null);
+		testContext.get().updateState(testInstance, testMethod, null);
 
 		for (TestExecutionListener testExecutionListener : getTestExecutionListeners()) {
 			try {
@@ -455,6 +470,7 @@ public class TestContextManager {
 				}
 			}
 		}
+        testContext.remove(); 
 		if (afterTestClassException != null) {
 			throw afterTestClassException;
 		}
