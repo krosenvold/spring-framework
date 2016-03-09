@@ -266,12 +266,12 @@ public class CachedIntrospectionResults {
 			}
 
 			BeanInfo beanInfo = null;
-			for (BeanInfoFactory beanInfoFactory : beanInfoFactories) {
+			/*for (BeanInfoFactory beanInfoFactory : beanInfoFactories) {
 				beanInfo = beanInfoFactory.getBeanInfo(beanClass);
 				if (beanInfo != null) {
 					break;
 				}
-			}
+			}*/
 			if (beanInfo == null) {
 				// If none of the factories supported the class, fall back to the default
 				beanInfo = (shouldIntrospectorIgnoreBeaninfoClasses ?
